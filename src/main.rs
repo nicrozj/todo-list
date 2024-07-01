@@ -1,18 +1,24 @@
-use axum::{self, response::Html, routing::get};
-use cercis::prelude::*;
-mod components;
+use axum::Router;
+use simplelog::*;
+
+pub use self::model::database::Database;
+
+mod endpoints;
+mod views;
+mod model;
 
 #[tokio::main]
 async fn main() {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
+    dotenvy::dotenv().ok();
+    SimpleLogger::init(LevelFilter::Info, Config::default()).ok();
+
+    let database = Database::from_env();
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
         .await
         .unwrap();
 
-    let app = axum::Router::new().route("/", get(todo_list));
+    let app = Router::new().nest("/", endpoints::get_nest(database.clone())).with_state(database);
 
     axum::serve(listener, app).await.unwrap();
-}
-
-async fn todo_list() -> Html<String> {
-    Html(rsx!(Page { title: "Test" }).render())
 }
